@@ -3,6 +3,8 @@
 This project is a state-of-the-art conversational voice agent with a beautiful, responsive HTML5 Canvas wave visualizer and real-time tool/function execution logs. It is powered by LiveKit Cloud, Google Gemini, and a FastAPI backend.
 
 ---
+/home/xeeshan/3) algotix_internship/vocie_agents/p1 (Edit).png
+
 
 ## Directory Structure
 

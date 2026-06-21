@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aether Voice - Conversational Voice AI</title>
+    <meta name="description" content="Immersive, real-time voice conversation agent powered by LiveKit and Gemini.">
+    <!-- Google Fonts: Outfit and Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- LiveKit Client SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+</head>
+<body>
+    <div class="app-container main-layout">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <span class="logo-icon">🎙️</span>
+                <h1>AI Voice Assistant</h1>
+            </div>
+            <div class="status-badge-container">
+                <span id="status-dot" class="status-dot disconnected"></span>
+                <span id="status-text" class="status-text">Disconnected</span>
+            </div>
+        </header>
+
+        <!-- Side-by-Side Dashboard Layout -->
+        <main class="dashboard-grid">
+            <!-- Left Column: Visualizer & Action Controls -->
+            <section class="visualizer-side" aria-label="Visualizer and Controls">
+                <div class="visualizer-container">
+                    <canvas id="audio-canvas" width="500" height="400"></canvas>
+                    <div id="agent-state-label" class="state-label">Ready to connect</div>
+                </div>
+                
+                <footer class="controls-area">
+                    <button id="btn-connect" class="btn btn-primary">
+                        <span class="btn-icon">⚡</span> Start Conversation
+                    </button>
+                    <button id="btn-mute" class="btn btn-secondary" disabled>
+                        <span class="btn-icon" id="mute-icon">🎤</span> Mute Microphone
+                    </button>
+                    <button id="btn-disconnect" class="btn btn-danger" disabled>
+                        <span class="btn-icon">🛑</span> End Session
+                    </button>
+                </footer>
+            </section>
+
+            <!-- Right Column: Live Conversation Transcripts -->
+            <section class="transcript-side" aria-label="Conversation Transcript">
+                <h2>Live Dialogue Feed</h2>
+                <div id="transcript-container" class="transcript-container">
+                    <div class="empty-transcript-message" id="empty-transcript">
+                        <p>Transcripts will stream here in real-time as you and the agent speak.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Application Script -->
+    <script src="app.js"></script>
+</body>
+</html>

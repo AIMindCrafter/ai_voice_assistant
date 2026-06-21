@@ -1,0 +1,17 @@
+[project]
+name = "livekit-voice-agent-backend"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "livekit-agents[silero,turn-detector]>=1.3.0",
+    "livekit-plugins-noise-cancellation>=0.2.0",
+    "google-genai>=2.9.0",
+    "python-dotenv>=1.2.2",
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.28.0",
+    "mcp[cli]>=1.0.0",
+    "httpx>=0.27.0",
+]

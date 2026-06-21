@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aether Voice - Conversational Voice AI</title>
+    <title>LiveKit Agent - Conversational Voice AI</title>
     <meta name="description" content="Immersive, real-time voice conversation agent powered by LiveKit and Gemini.">
     <!-- Google Fonts: Outfit and Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,38 +19,79 @@
         <header class="app-header">
             <div class="logo-area">
                 <span class="logo-icon">🎙️</span>
-                <h1>AI Voice Assistant</h1>
+                <h1>Aether Voice Assistant</h1>
             </div>
-            <div class="status-badge-container">
-                <span id="status-dot" class="status-dot disconnected"></span>
-                <span id="status-text" class="status-text">Disconnected</span>
+            <div class="logo-badge">
+                <span>LIVEKIT POWERED</span>
             </div>
         </header>
 
         <!-- Side-by-Side Dashboard Layout -->
-        <main class="dashboard-grid">
+        <main class="dashboard-grid" id="dashboard-grid">
             <!-- Left Column: Visualizer & Action Controls -->
             <section class="visualizer-side" aria-label="Visualizer and Controls">
-                <div class="visualizer-container">
-                    <canvas id="audio-canvas" width="500" height="400"></canvas>
+                <div class="visualizer-container" id="visualizer-container">
+                    
+                    <!-- Top state label -->
                     <div id="agent-state-label" class="state-label">Ready to connect</div>
+
+                    <!-- Canvas Visualizer -->
+                    <canvas id="audio-canvas"></canvas>
+
+                    <!-- Center Connect Button (When disconnected) -->
+                    <div id="connect-overlay" class="connect-overlay">
+                        <button id="btn-connect" class="btn-connect-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M5 3l14 9-14 9V3z"/>
+                            </svg>
+                            <span>Start Audio Agent</span>
+                        </button>
+                    </div>
+
+                    <!-- Floating capsule control bar -->
+                    <div class="control-bar" id="control-bar">
+                        <button id="btn-mute" class="control-btn" title="Mute/Unmute Mic" disabled>
+                            <!-- Mic Icon -->
+                            <svg class="icon-mic" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                                <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
+                                <line x1="12" x2="12" y1="19" y2="22"/>
+                            </svg>
+                        </button>
+                        <button id="btn-camera" class="control-btn muted" title="Toggle Camera (Inactive)">
+                            <!-- Video Off Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m1 1 22 22"/>
+                                <path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3 0h9a2 2 0 0 1 2 2v9"/>
+                                <path d="m23 7-6 5 6 5V7Z"/>
+                            </svg>
+                        </button>
+                        <button id="btn-chat" class="control-btn active" title="Toggle Transcripts">
+                            <!-- Chat Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            </svg>
+                        </button>
+                        <button id="btn-disconnect" class="btn-end-call" title="End Session" disabled>
+                            <!-- End Call Phone Icon -->
+                            <svg class="icon-phone" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 9c-2.2 0-4.3.4-6.2 1.1l-1.9-1.9C6.5 6.7 9.1 6 12 6s5.5.7 8.1 2.2l-1.9 1.9C16.3 9.4 14.2 9 12 9zM21 12.6c0-.5-.3-1-.7-1.3l-2.6-.9c-.5-.2-1.1 0-1.4.4l-1.3 1.3c-2.8-1.5-5.1-3.8-6.6-6.6l1.3-1.3c.4-.4.5-1 .3-1.4L6.4 2.2C6.1 1.7 5.6 1.4 5 1.4H2c-.8 0-1.5.7-1.5 1.5v2.3C.5 15.3 9.7 24.5 20.7 24.5h2.3c.8 0 1.5-.7 1.5-1.5v-3c0-.6-.3-1.1-.8-1.4l-3-1z" />
+                            </svg>
+                            <span>END CALL</span>
+                        </button>
+                    </div>
+
+                    <!-- Bottom Right Status Badge -->
+                    <div id="status-badge" class="status-badge disconnected">
+                        <span id="status-dot" class="status-dot disconnected"></span>
+                        <span id="status-text" class="status-text">Disconnected</span>
+                    </div>
+
                 </div>
-                
-                <footer class="controls-area">
-                    <button id="btn-connect" class="btn btn-primary">
-                        <span class="btn-icon">⚡</span> Start Conversation
-                    </button>
-                    <button id="btn-mute" class="btn btn-secondary" disabled>
-                        <span class="btn-icon" id="mute-icon">🎤</span> Mute Microphone
-                    </button>
-                    <button id="btn-disconnect" class="btn btn-danger" disabled>
-                        <span class="btn-icon">🛑</span> End Session
-                    </button>
-                </footer>
             </section>
 
             <!-- Right Column: Live Conversation Transcripts -->
-            <section class="transcript-side" aria-label="Conversation Transcript">
+            <section class="transcript-side" id="transcript-side" aria-label="Conversation Transcript">
                 <h2>Live Dialogue Feed</h2>
                 <div id="transcript-container" class="transcript-container">
                     <div class="empty-transcript-message" id="empty-transcript">

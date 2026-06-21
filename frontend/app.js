@@ -2,13 +2,18 @@
 const btnConnect = document.getElementById('btn-connect');
 const btnMute = document.getElementById('btn-mute');
 const btnDisconnect = document.getElementById('btn-disconnect');
+const btnChat = document.getElementById('btn-chat');
+const btnCamera = document.getElementById('btn-camera');
+const dashboardGrid = document.getElementById('dashboard-grid');
+const statusBadge = document.getElementById('status-badge');
 const statusDot = document.getElementById('status-dot');
 const statusText = document.getElementById('status-text');
 const stateLabel = document.getElementById('agent-state-label');
 const canvas = document.getElementById('audio-canvas');
 const transcriptContainer = document.getElementById('transcript-container');
 const emptyTranscript = document.getElementById('empty-transcript');
-const muteIcon = document.getElementById('mute-icon');
+const connectOverlay = document.getElementById('connect-overlay');
+const controlBar = document.getElementById('control-bar');
 
 // LiveKit & Web Audio Variables
 let room = null;
@@ -33,8 +38,10 @@ window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
 // Status Helpers
-function updateStatus(dotClass, text, label) {
-    statusDot.className = `status-dot ${dotClass}`;
+function updateStatus(stateClass, text, label) {
+    // stateClass: 'disconnected', 'connecting', 'connected', 'listening', 'speaking'
+    statusBadge.className = `status-badge ${stateClass}`;
+    statusDot.className = `status-dot ${stateClass}`;
     statusText.textContent = text;
     if (label) stateLabel.textContent = label;
 }
@@ -116,42 +123,6 @@ function analyzeTrack(track) {
     }
 }
 
-// Particle Sphere variables
-const numParticles = 380;
-const particles = [];
-const baseRadius = 110; // Giant ball base radius
-const focalLength = 300;
-
-function initParticles() {
-    if (particles.length > 0) return;
-    for (let i = 0; i < numParticles; i++) {
-        const phi = Math.acos(1 - 2 * (i + 0.5) / numParticles);
-        const theta = Math.PI * (1 + Math.sqrt(5)) * i;
-        
-        const x = Math.sin(phi) * Math.cos(theta);
-        const y = Math.sin(phi) * Math.sin(theta);
-        const z = Math.cos(phi);
-        
-        let colorBase;
-        const rand = Math.random();
-        if (rand < 0.35) {
-            colorBase = '14, 165, 233'; // Vivid Sky Cyan
-        } else if (rand < 0.65) {
-            colorBase = '37, 99, 235';  // Royal Blue
-        } else if (rand < 0.85) {
-            colorBase = '124, 58, 237';  // Premium Purple
-        } else {
-            colorBase = '236, 72, 153';  // Pink/Magenta
-        }
-        
-        particles.push({
-            x, y, z,
-            colorBase,
-            size: Math.random() * 1.6 + 1.2
-        });
-    }
-}
-
 // Visualizer Draw Loop
 let phase = 0;
 function drawVisualizer() {
@@ -176,103 +147,113 @@ function drawVisualizer() {
         voiceActivity = sum / bufferLength;
     }
 
-    currentVolume = currentVolume * 0.8 + voiceActivity * 0.2;
-
-    // Background subtle grid lines (darker for light mode)
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.018)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < width; i += 50) {
-        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, height); ctx.stroke();
-    }
-    for (let i = 0; i < height; i += 50) {
-        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(width, i); ctx.stroke();
-    }
+    // Apply smoothing to the audio volume feedback
+    currentVolume = currentVolume * 0.75 + voiceActivity * 0.25;
 
     const centerX = width / 2;
     const centerY = height / 2;
 
-    // Glowing center core
-    let orbRadius = 55 + currentVolume * 0.5;
-    let gradient = ctx.createRadialGradient(centerX, centerY, 5, centerX, centerY, orbRadius);
-    
-    let orbColor = 'rgba(0, 242, 254, ';
-    if (statusDot.classList.contains('speaking')) {
-        orbColor = 'rgba(127, 0, 255, ';
-    } else if (statusDot.classList.contains('listening')) {
-        orbColor = 'rgba(79, 172, 254, ';
-    } else if (statusDot.classList.contains('connecting')) {
-        orbColor = 'rgba(255, 145, 0, ';
+    // Oscillate the rotation phase based on time + voice activity level
+    phase += 0.02 + (currentVolume / 800);
+
+    const numPoints = 8;
+    const baseRadius = 75 + currentVolume * 0.65; // Base core radius pulses with volume
+
+    // Determine visual colors and glows based on state
+    let color1 = 'rgba(0, 242, 254, '; // Cyan default
+    let color2 = 'rgba(0, 114, 255, '; // Blue default
+    let shadowColor = 'rgba(0, 242, 254, 0.35)';
+
+    if (statusBadge.classList.contains('speaking')) {
+        color1 = 'rgba(127, 0, 255, '; // Purple
+        color2 = 'rgba(236, 72, 153, '; // Pink
+        shadowColor = 'rgba(127, 0, 255, 0.4)';
+    } else if (statusBadge.classList.contains('listening')) {
+        color1 = 'rgba(0, 242, 254, '; // Cyan
+        color2 = 'rgba(16, 185, 129, '; // Green
+        shadowColor = 'rgba(0, 242, 254, 0.4)';
+    } else if (statusBadge.classList.contains('connecting')) {
+        color1 = 'rgba(255, 145, 0, '; // Orange
+        color2 = 'rgba(245, 158, 11, '; // Amber
+        shadowColor = 'rgba(255, 145, 0, 0.3)';
+    }
+
+    // Layer 1 & 2: Frosted blurred fluid waves
+    const numLayers = 3;
+    for (let layer = 0; layer < numLayers; layer++) {
+        const points = [];
+        const layerOpacity = 0.08 + (0.12 / (layer + 1));
+        const layerRadius = baseRadius - (layer * 12);
+        
+        for (let i = 0; i < numPoints; i++) {
+            const angle = (i / numPoints) * Math.PI * 2;
+            
+            // Flowing wavy oscillations using sinusoids
+            const waveFreq = 2.5;
+            const waveSpeed = 2.2;
+            const waveIntensity = 12 + currentVolume * 0.4;
+            
+            const oscillation = Math.sin(angle * waveFreq - phase * waveSpeed + layer * 1.5) * waveIntensity;
+            const radius = Math.max(15, layerRadius + oscillation);
+            
+            const x = centerX + Math.cos(angle) * radius;
+            const y = centerY + Math.sin(angle) * radius;
+            
+            points.push({ x, y });
+        }
+        
+        const grad = ctx.createLinearGradient(centerX - baseRadius, centerY - baseRadius, centerX + baseRadius, centerY + baseRadius);
+        grad.addColorStop(0, color1 + layerOpacity + ')');
+        grad.addColorStop(1, color2 + (layerOpacity * 0.4) + ')');
+        
+        ctx.save();
+        ctx.shadowBlur = 30 - layer * 5;
+        ctx.shadowColor = shadowColor;
+        
+        // Draw smooth closed shape via quadratic bezier curves
+        ctx.beginPath();
+        let prevPoint = points[points.length - 1];
+        let firstMid = { x: (points[0].x + prevPoint.x) / 2, y: (points[0].y + prevPoint.y) / 2 };
+        ctx.moveTo(firstMid.x, firstMid.y);
+        for (let i = 0; i < points.length; i++) {
+            const next = points[(i + 1) % points.length];
+            const mid = { x: (points[i].x + next.x) / 2, y: (points[i].y + next.y) / 2 };
+            ctx.quadraticCurveTo(points[i].x, points[i].y, mid.x, mid.y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.restore();
     }
     
-    gradient.addColorStop(0, orbColor + '0.45)');
-    gradient.addColorStop(0.5, orbColor + '0.12)');
-    gradient.addColorStop(1, orbColor + '0)');
-    
+    // Core layer: Glowing outline wave
+    ctx.save();
     ctx.beginPath();
-    ctx.arc(centerX, centerY, orbRadius, 0, Math.PI * 2);
-    ctx.fillStyle = gradient;
-    ctx.fill();
-
-    // Rotations
-    const speedY = 0.004 + (currentVolume / 1200);
-    phase += speedY;
-    
-    const angleX = phase * 0.4;
-    const angleY = phase;
-    
-    const cosX = Math.cos(angleX);
-    const sinX = Math.sin(angleX);
-    const cosY = Math.cos(angleY);
-    const sinY = Math.sin(angleY);
-
-    initParticles();
-
-    const projected = particles.map((p, idx) => {
-        let x1 = p.x * cosY - p.z * sinY;
-        let z1 = p.z * cosY + p.x * sinY;
-        
-        let y2 = p.y * cosX - z1 * sinX;
-        let z2 = z1 * cosX + p.y * sinX;
-        
-        let freqValue = 0;
-        if (dataArray && bufferLength > 0) {
-            freqValue = dataArray[idx % bufferLength];
-        }
-
-        // Giant ball expansion multiplier
-        const expansion = (freqValue / 255) * 125 * (currentVolume > 2 ? 1 : 0.05);
-        const breath = Math.sin(phase * 1.5 + idx) * 3;
-        const currentRadius = baseRadius + expansion + breath;
-
-        const scale = focalLength / (focalLength + z2);
-        const screenX = x1 * scale * currentRadius + centerX;
-        const screenY = y2 * scale * currentRadius + centerY;
-
-        return { p, rotZ: z2, screenX, screenY, scale, freqValue };
-    });
-
-    projected.sort((a, b) => b.rotZ - a.rotZ);
-
-    projected.forEach((pObj, idx) => {
-        const depthOpacity = (pObj.rotZ + 1.2) / 2.2;
-        const opacity = 0.15 + depthOpacity * 0.75;
-        const size = pObj.p.size * pObj.scale * (0.8 + (pObj.freqValue / 255) * 0.6);
-
-        ctx.beginPath();
-        ctx.arc(pObj.screenX, pObj.screenY, size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${pObj.p.colorBase}, ${opacity})`;
-        ctx.fill();
-
-        if (currentVolume > 15 && idx < projected.length - 1 && Math.random() < 0.07) {
-            const nextP = projected[idx + 1];
-            ctx.beginPath();
-            ctx.moveTo(pObj.screenX, pObj.screenY);
-            ctx.lineTo(nextP.screenX, nextP.screenY);
-            ctx.strokeStyle = `rgba(${pObj.p.colorBase}, ${opacity * 0.22})`;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-        }
-    });
+    const corePoints = [];
+    const coreRadius = baseRadius * 0.85;
+    for (let i = 0; i < numPoints; i++) {
+        const angle = (i / numPoints) * Math.PI * 2;
+        const oscillation = Math.cos(angle * 3 + phase * 2.5) * (4 + currentVolume * 0.1);
+        const radius = Math.max(10, coreRadius + oscillation);
+        const x = centerX + Math.cos(angle) * radius;
+        const y = centerY + Math.sin(angle) * radius;
+        corePoints.push({ x, y });
+    }
+    let prevPoint = corePoints[corePoints.length - 1];
+    let firstMid = { x: (corePoints[0].x + prevPoint.x) / 2, y: (corePoints[0].y + prevPoint.y) / 2 };
+    ctx.moveTo(firstMid.x, firstMid.y);
+    for (let i = 0; i < corePoints.length; i++) {
+        const next = corePoints[(i + 1) % corePoints.length];
+        const mid = { x: (corePoints[i].x + next.x) / 2, y: (corePoints[i].y + next.y) / 2 };
+        ctx.quadraticCurveTo(corePoints[i].x, corePoints[i].y, mid.x, mid.y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = color1 + '0.55)';
+    ctx.lineWidth = 3;
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = shadowColor;
+    ctx.stroke();
+    ctx.restore();
 }
 
 function startVisualizer() {
@@ -415,15 +396,26 @@ async function startConversation() {
         }
 
         updateStatus('connected', 'Connected', 'Agent is listening...');
+        
+        // Transition Overlay States
+        connectOverlay.classList.add('hidden');
+        controlBar.classList.remove('hidden');
+        
         startVisualizer();
 
         btnConnect.disabled = true;
         btnMute.disabled = false;
         btnDisconnect.disabled = false;
         isMuted = false;
-        muteIcon.textContent = '🎤';
-        btnMute.className = 'btn btn-secondary';
-        btnMute.innerHTML = '<span class="btn-icon" id="mute-icon">🎤</span> Mute Microphone';
+        
+        btnMute.className = 'control-btn';
+        btnMute.innerHTML = `
+            <svg class="icon-mic" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
+                <line x1="12" x2="12" y1="19" y2="22"/>
+            </svg>
+        `;
 
     } catch (error) {
         console.error("Failed to start session:", error);
@@ -440,11 +432,26 @@ async function toggleMute() {
         await room.localParticipant.setMicrophoneEnabled(!isMuted);
         
         if (isMuted) {
-            btnMute.className = 'btn btn-secondary muted';
-            btnMute.innerHTML = '<span class="btn-icon" id="mute-icon">🔇</span> Unmute Microphone';
+            btnMute.className = 'control-btn muted';
+            btnMute.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="2" x2="22" y1="2" y2="22"/>
+                    <path d="M18.89 13.23A7.12 7.12 0 0 0 19 11v-1"/>
+                    <path d="M5 10v1a7 7 0 0 0 12 5"/>
+                    <path d="M15 9.34V5a3 3 0 0 0-5.68-1.35"/>
+                    <path d="M9 9v3a3 3 0 0 0 5.12 2.12"/>
+                    <line x1="12" x2="12" y1="19" y2="22"/>
+                </svg>
+            `;
         } else {
-            btnMute.className = 'btn btn-secondary';
-            btnMute.innerHTML = '<span class="btn-icon" id="mute-icon">🎤</span> Mute Microphone';
+            btnMute.className = 'control-btn';
+            btnMute.innerHTML = `
+                <svg class="icon-mic" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                    <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
+                    <line x1="12" x2="12" y1="19" y2="22"/>
+                </svg>
+            `;
         }
     } catch (e) {
         console.error("Failed to toggle mute state:", e);
@@ -465,12 +472,23 @@ function cleanupSession() {
     }
     
     updateStatus('disconnected', 'Disconnected', 'Ready to connect');
+    
+    // Transition Overlay States
+    connectOverlay.classList.remove('hidden');
+    controlBar.classList.add('hidden');
 
     btnConnect.disabled = false;
     btnMute.disabled = true;
     btnDisconnect.disabled = true;
-    btnMute.className = 'btn btn-secondary';
-    btnMute.innerHTML = '<span class="btn-icon" id="mute-icon">🎤</span> Mute Microphone';
+    
+    btnMute.className = 'control-btn';
+    btnMute.innerHTML = `
+        <svg class="icon-mic" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+            <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
+            <line x1="12" x2="12" y1="19" y2="22"/>
+        </svg>
+    `;
     isMuted = false;
     currentVolume = 0;
 }
@@ -479,3 +497,39 @@ function cleanupSession() {
 btnConnect.addEventListener('click', startConversation);
 btnMute.addEventListener('click', toggleMute);
 btnDisconnect.addEventListener('click', cleanupSession);
+
+// Collapsible Transcript Column toggle
+btnChat.addEventListener('click', () => {
+    btnChat.classList.toggle('active');
+    dashboardGrid.classList.toggle('transcripts-hidden');
+    // Allow column transition to complete, then resize canvas
+    setTimeout(resizeCanvas, 400);
+});
+
+// Cosmetic Camera toggle (Visual click interaction)
+btnCamera.addEventListener('click', () => {
+    btnCamera.classList.toggle('muted');
+    if (btnCamera.classList.contains('muted')) {
+        btnCamera.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m1 1 22 22"/>
+                <path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3 0h9a2 2 0 0 1 2 2v9"/>
+                <path d="m23 7-6 5 6 5V7Z"/>
+            </svg>
+        `;
+    } else {
+        btnCamera.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+            </svg>
+        `;
+    }
+});
+
+// Initial load check
+document.addEventListener("DOMContentLoaded", () => {
+    // Hide control bar initially
+    controlBar.classList.add('hidden');
+    resizeCanvas();
+});
